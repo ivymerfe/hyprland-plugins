@@ -29,7 +29,7 @@ void CClockOverlay::addDamage() {
   for (const auto &monitor : g_pCompositor->m_monitors) {
     const auto &cache = m_cache[monitor];
     if (cache.texture) {
-      monitor->addDamage(getBBox(monitor, cache));
+      monitor->addDamage(getBBox(monitor, cache.texture));
     }
   }
 }
@@ -59,23 +59,22 @@ void CClockOverlay::render(const PHLMONITOR &pMonitor) {
   if (!m_shown) {
     return;
   }
-  const auto &cache = ensureCache(pMonitor);
+  const auto texture = getTexture(pMonitor);
   CClockPassElement::SRenderData textData;
-  textData.texture = cache.texture;
-  textData.box = getBBox(pMonitor, cache);
+  textData.texture = texture;
+  textData.box = getBBox(pMonitor, texture);
   g_pHyprRenderer->m_renderPass.add(
       makeUnique<CClockPassElement>(std::move(textData)));
 }
 
 CBox CClockOverlay::getBBox(const PHLMONITOR &pMonitor,
-                            const SRenderCache &cache) {
-  const auto texSize = cache.texture->m_size;
+                            const SP<CTexture> &texture) {
+  const auto texSize = texture->m_size;
   const auto monSize = pMonitor->m_transformedSize;
   return {monSize.x - texSize.x, monSize.y - texSize.y, texSize.x, texSize.y};
 }
 
-CClockOverlay::SRenderCache &
-CClockOverlay::ensureCache(const PHLMONITOR &pMonitor) {
+SP<CTexture> CClockOverlay::getTexture(const PHLMONITOR &pMonitor) {
   auto &cache = m_cache[pMonitor];
   const float scale = pMonitor->m_scale;
   const float fontSize = 19.0f * scale;
@@ -90,7 +89,7 @@ CClockOverlay::ensureCache(const PHLMONITOR &pMonitor) {
                                {0., 0., 0., 1.0}, 1.5 * scale);
     cache.fontSize = fontSize;
   }
-  return cache;
+  return cache.texture;
 }
 
 SP<CTexture> CClockOverlay::renderText(const std::string &text, CHyprColor col,

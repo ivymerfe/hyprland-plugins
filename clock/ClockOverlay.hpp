@@ -31,9 +31,9 @@ public:
 
   void render(const PHLMONITOR &pMonitor);
 
-  static CBox getBBox(const PHLMONITOR &pMonitor, const SRenderCache &cache);
+  static CBox getBBox(const PHLMONITOR &pMonitor, const SP<CTexture>& texture);
 
-  SRenderCache &ensureCache(const PHLMONITOR &pMonitor);
+  SP<CTexture> getTexture(const PHLMONITOR &pMonitor);
 
 private:
   static SP<CTexture> renderText(const std::string &text, CHyprColor col,
