@@ -6,8 +6,6 @@
 #include <src/Compositor.hpp>
 #include <src/render/OpenGL.hpp>
 #include <src/render/Renderer.hpp>
-#include <src/render/pass/RectPassElement.hpp>
-#include <src/render/pass/TexPassElement.hpp>
 #include <utility>
 
 #include "ClockPassElement.hpp"
@@ -16,54 +14,86 @@ CClockOverlay::CClockOverlay() = default;
 
 CClockOverlay::~CClockOverlay() = default;
 
-void CClockOverlay::tick() {
+bool CClockOverlay::updateTime() {
   const std::time_t t = std::time(nullptr);
-  const std::tm* tm = std::localtime(&t);
-
+  const std::tm *tm = std::localtime(&t);
   if (m_hour != tm->tm_hour || m_minute != tm->tm_min) {
-    for (const auto& monitor : g_pCompositor->m_monitors) {
-      const auto& cache = m_cache[monitor];
-      if (cache.valid) {
-        monitor->addDamage(cache.bbox);
-      }
-    }
     m_hour = tm->tm_hour;
     m_minute = tm->tm_min;
+    return true;
+  }
+  return false;
+}
+
+void CClockOverlay::addDamage() {
+  for (const auto &monitor : g_pCompositor->m_monitors) {
+    const auto &cache = m_cache[monitor];
+    if (cache.texture) {
+      monitor->addDamage(getBBox(monitor, cache));
+    }
   }
 }
 
-void CClockOverlay::render(const PHLMONITOR& pMonitor) {
-  const auto& cache = ensureCache(pMonitor);
+void CClockOverlay::toggle() {
+  m_shown = !m_shown;
+  if (m_shown) {
+    updateTime();
+    for (const auto &monitor : g_pCompositor->m_monitors) {
+      g_pHyprRenderer->damageMonitor(monitor);
+    }
+  } else {
+    addDamage();
+  }
+}
+
+void CClockOverlay::tick() {
+  if (!m_shown) {
+    return;
+  }
+  if (updateTime()) {
+    addDamage();
+  }
+}
+
+void CClockOverlay::render(const PHLMONITOR &pMonitor) {
+  if (!m_shown) {
+    return;
+  }
+  const auto &cache = ensureCache(pMonitor);
   CClockPassElement::SRenderData textData;
   textData.texture = cache.texture;
-  textData.box = cache.bbox;
+  textData.box = getBBox(pMonitor, cache);
   g_pHyprRenderer->m_renderPass.add(
       makeUnique<CClockPassElement>(std::move(textData)));
 }
 
-CClockOverlay::SRenderCache& CClockOverlay::ensureCache(
-    const PHLMONITOR& pMonitor) {
-  auto& cache = m_cache[pMonitor];
-  float scale = pMonitor->m_scale;
-  if (cache.scale != scale || cache.hour != m_hour ||
+CBox CClockOverlay::getBBox(const PHLMONITOR &pMonitor,
+                            const SRenderCache &cache) {
+  const auto texSize = cache.texture->m_size;
+  const auto monSize = pMonitor->m_transformedSize;
+  return {monSize.x - texSize.x, monSize.y - texSize.y, texSize.x, texSize.y};
+}
+
+CClockOverlay::SRenderCache &
+CClockOverlay::ensureCache(const PHLMONITOR &pMonitor) {
+  auto &cache = m_cache[pMonitor];
+  const float scale = pMonitor->m_scale;
+  const float fontSize = 19.0f * scale;
+  if (cache.fontSize != fontSize || cache.hour != m_hour ||
       cache.minute != m_minute) {
     cache.hour = m_hour;
     cache.minute = m_minute;
     const std::string text = (m_hour < 10 ? "0" : "") + std::to_string(m_hour) +
                              ":" + (m_minute < 10 ? "0" : "") +
                              std::to_string(m_minute);
-    cache.texture = renderText(text, {1.0, 1.0, 1.0, 1.0}, 19 * scale, 400,
+    cache.texture = renderText(text, {1.0, 1.0, 1.0, 1.0}, fontSize, 400,
                                {0., 0., 0., 1.0}, 1.5 * scale);
-    const auto size = cache.texture->m_size;
-    const auto monSize = pMonitor->m_transformedSize;
-    cache.bbox = {monSize.x - size.x, monSize.y - size.y, size.x, size.y};
-    cache.scale = scale;
-    cache.valid = true;
+    cache.fontSize = fontSize;
   }
   return cache;
 }
 
-SP<CTexture> CClockOverlay::renderText(const std::string& text, CHyprColor col,
+SP<CTexture> CClockOverlay::renderText(const std::string &text, CHyprColor col,
                                        int pt, int weight,
                                        CHyprColor outlineCol,
                                        double outlineWidth) {
@@ -73,9 +103,9 @@ SP<CTexture> CClockOverlay::renderText(const std::string& text, CHyprColor col,
   const auto FONTSIZE = pt;
   const auto COLOR = col;
 
-  auto setupLayout = [&](cairo_t* cr) -> PangoLayout* {
-    PangoLayout* layout = pango_cairo_create_layout(cr);
-    PangoFontDescription* fd = pango_font_description_new();
+  auto setupLayout = [&](cairo_t *cr) -> PangoLayout * {
+    PangoLayout *layout = pango_cairo_create_layout(cr);
+    PangoFontDescription *fd = pango_font_description_new();
     pango_font_description_set_family_static(fd, FONTFAMILY);
     pango_font_description_set_absolute_size(fd, FONTSIZE * PANGO_SCALE);
     pango_font_description_set_style(fd, PANGO_STYLE_NORMAL);

@@ -6,30 +6,37 @@
 class CClockOverlay {
   struct SRenderCache {
     SP<CTexture> texture;
-    float scale = 1.0;
+    float fontSize;
     int hour;
     int minute;
-    CBox bbox;
-    bool valid;
   };
-  int m_hour;
-  int m_minute;
+
+  int m_hour = 0;
+  int m_minute = 0;
+  bool m_shown = true;
   std::unordered_map<PHLMONITOR, SRenderCache> m_cache;
 
- public:
+public:
   CClockOverlay();
 
   ~CClockOverlay();
 
+  bool updateTime();
+
+  void addDamage();
+
+  void toggle();
+
   void tick();
 
-  void render(const PHLMONITOR& pMonitor);
+  void render(const PHLMONITOR &pMonitor);
 
-  SRenderCache& ensureCache(const PHLMONITOR& pMonitor);
+  static CBox getBBox(const PHLMONITOR &pMonitor, const SRenderCache &cache);
 
- private:
-  SP<CTexture> renderText(const std::string& text, CHyprColor col,
-                                       int pt, int weight,
-                                       CHyprColor outlineCol,
-                                       double outlineWidth);
+  SRenderCache &ensureCache(const PHLMONITOR &pMonitor);
+
+private:
+  static SP<CTexture> renderText(const std::string &text, CHyprColor col,
+                                 int pt, int weight, CHyprColor outlineCol,
+                                 double outlineWidth);
 };

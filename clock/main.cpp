@@ -42,6 +42,18 @@ static void onTimer(SP<CEventLoopTimer>, void*) {
   g_clockTimer->updateTimeout(std::chrono::milliseconds(1000));
 }
 
+SDispatchResult onClockDispatch(const std::string arg) {
+  SDispatchResult result;
+  if (arg == "toggle" || arg == "") {
+    g_clockOverlay->toggle();
+    result.success = true;
+  } else {
+    result.success = false;
+    result.error = "Unknown command: " + arg;
+  }
+  return result;
+}
+
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
   PHANDLE = handle;
 
@@ -66,6 +78,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
   g_clockTimer = makeShared<CEventLoopTimer>(std::chrono::milliseconds(1000),
                                              onTimer, nullptr);
   g_pEventLoopManager->addTimer(g_clockTimer);
+
+  HyprlandAPI::addDispatcherV2(PHANDLE, "clock", onClockDispatch);
 
   return {"clock", "Clock overlay", "Ivy", "1.0"};
 }

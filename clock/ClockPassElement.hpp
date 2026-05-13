@@ -4,26 +4,26 @@
 #include <hyprland/src/render/pass/PassElement.hpp>
 
 class CClockPassElement : public IPassElement {
-public:
-    struct SRenderData {
-        SP<CTexture> texture;
-        CBox box;
-    };
+ public:
+  struct SRenderData {
+    SP<CTexture> texture;
+    CBox box;
+  };
 
-    explicit CClockPassElement(SRenderData data_);
+  explicit CClockPassElement(SRenderData data_);
 
-    ~CClockPassElement() override = default;
+  ~CClockPassElement() override = default;
 
-    void draw(const CRegion &damage) override;
+  void draw(const CRegion &damage) override;
 
-    bool needsLiveBlur() override;
+  bool needsLiveBlur() override;
 
-    bool needsPrecomputeBlur() override;
+  bool needsPrecomputeBlur() override;
 
-    std::optional<CBox> boundingBox() override;
+  std::optional<CBox> boundingBox() override;
 
-    const char *passName() override { return "CClockPassElement"; }
+  const char *passName() override { return "CClockPassElement"; }
 
-private:
-    SRenderData m_data;
+ private:
+  SRenderData m_data;
 };
