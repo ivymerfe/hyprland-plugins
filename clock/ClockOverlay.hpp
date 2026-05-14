@@ -5,7 +5,7 @@
 
 class CClockOverlay {
   struct SRenderCache {
-    SP<CTexture> texture;
+    SP<Render::ITexture> texture;
     float fontSize;
     int hour;
     int minute;
@@ -31,12 +31,16 @@ public:
 
   void render(const PHLMONITOR &pMonitor);
 
-  static CBox getBBox(const PHLMONITOR &pMonitor, const SP<CTexture>& texture);
-
-  SP<CTexture> getTexture(const PHLMONITOR &pMonitor);
-
 private:
-  static SP<CTexture> renderText(const std::string &text, CHyprColor col,
-                                 int pt, int weight, CHyprColor outlineCol,
-                                 double outlineWidth);
+  static CBox getBBox(const PHLMONITOR &pMonitor,
+                      const SP<Render::ITexture> &texture);
+
+  std::string getTimeString(int hour, int minute);
+
+  SP<Render::ITexture> getTexture(const PHLMONITOR &pMonitor);
+
+  static SP<Render::ITexture> renderText(const std::string &text,
+                                         CHyprColor col, int pt, int weight,
+                                         CHyprColor outlineCol,
+                                         double outlineWidth);
 };

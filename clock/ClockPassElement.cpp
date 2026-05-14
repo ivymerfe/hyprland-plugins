@@ -4,20 +4,21 @@
 #include <hyprland/src/render/Renderer.hpp>
 #include <utility>
 
-CClockPassElement::CClockPassElement(SRenderData data_)
+using namespace Render::GL;
+
+CClockPassElement::CClockPassElement(const SRenderData &data_)
     : m_data(std::move(data_)) {}
 
-void CClockPassElement::draw(const CRegion& damage) {
-  g_pHyprOpenGL->renderTexture(
-      m_data.texture, m_data.box,
-      {.damage = &damage, .a = 1.0, .blur = true, .blurA = 0.5, .round = 10});
+std::vector<UP<IPassElement>> CClockPassElement::draw() {
+  g_pHyprOpenGL->renderTexture(m_data.texture, m_data.box, {.round = 10});
+  return {};
 }
 
 bool CClockPassElement::needsLiveBlur() { return false; }
 
 std::optional<CBox> CClockPassElement::boundingBox() {
   return m_data.box.copy()
-      .scale(1.F / g_pHyprOpenGL->m_renderData.pMonitor->m_scale)
+      .scale(1.F / g_pHyprRenderer->m_renderData.pMonitor->m_scale)
       .round();
 }
 

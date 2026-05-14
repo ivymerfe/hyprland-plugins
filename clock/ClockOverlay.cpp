@@ -6,9 +6,12 @@
 #include <src/Compositor.hpp>
 #include <src/render/OpenGL.hpp>
 #include <src/render/Renderer.hpp>
+#include <src/render/gl/GLTexture.hpp>
 #include <utility>
 
 #include "ClockPassElement.hpp"
+
+using namespace Render::GL;
 
 CClockOverlay::CClockOverlay() = default;
 
@@ -17,6 +20,7 @@ CClockOverlay::~CClockOverlay() = default;
 bool CClockOverlay::updateTime() {
   const std::time_t t = std::time(nullptr);
   const std::tm *tm = std::localtime(&t);
+
   if (m_hour != tm->tm_hour || m_minute != tm->tm_min) {
     m_hour = tm->tm_hour;
     m_minute = tm->tm_min;
@@ -68,13 +72,18 @@ void CClockOverlay::render(const PHLMONITOR &pMonitor) {
 }
 
 CBox CClockOverlay::getBBox(const PHLMONITOR &pMonitor,
-                            const SP<CTexture> &texture) {
+                            const SP<Render::ITexture> &texture) {
   const auto texSize = texture->m_size;
   const auto monSize = pMonitor->m_transformedSize;
   return {monSize.x - texSize.x, monSize.y - texSize.y, texSize.x, texSize.y};
 }
 
-SP<CTexture> CClockOverlay::getTexture(const PHLMONITOR &pMonitor) {
+std::string CClockOverlay::getTimeString(int hour, int minute) {
+  return (m_hour < 10 ? "0" : "") + std::to_string(m_hour) + ":" +
+         (m_minute < 10 ? "0" : "") + std::to_string(m_minute);
+}
+
+SP<Render::ITexture> CClockOverlay::getTexture(const PHLMONITOR &pMonitor) {
   auto &cache = m_cache[pMonitor];
   const float scale = pMonitor->m_scale;
   const float fontSize = 19.0f * scale;
@@ -82,9 +91,7 @@ SP<CTexture> CClockOverlay::getTexture(const PHLMONITOR &pMonitor) {
       cache.minute != m_minute) {
     cache.hour = m_hour;
     cache.minute = m_minute;
-    const std::string text = (m_hour < 10 ? "0" : "") + std::to_string(m_hour) +
-                             ":" + (m_minute < 10 ? "0" : "") +
-                             std::to_string(m_minute);
+    const std::string text = getTimeString(m_hour, m_minute);
     cache.texture = renderText(text, {1.0, 1.0, 1.0, 1.0}, fontSize, 400,
                                {0., 0., 0., 1.0}, 1.5 * scale);
     cache.fontSize = fontSize;
@@ -92,12 +99,11 @@ SP<CTexture> CClockOverlay::getTexture(const PHLMONITOR &pMonitor) {
   return cache.texture;
 }
 
-SP<CTexture> CClockOverlay::renderText(const std::string &text, CHyprColor col,
-                                       int pt, int weight,
-                                       CHyprColor outlineCol,
-                                       double outlineWidth) {
-  SP<CTexture> tex = makeShared<CTexture>();
-
+SP<Render::ITexture> CClockOverlay::renderText(const std::string &text,
+                                               CHyprColor col, int pt,
+                                               int weight,
+                                               CHyprColor outlineCol,
+                                               double outlineWidth) {
   const auto FONTFAMILY = "monospace";
   const auto FONTSIZE = pt;
   const auto COLOR = col;
@@ -135,8 +141,11 @@ SP<CTexture> CClockOverlay::renderText(const std::string &text, CHyprColor col,
 
   CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, textW, textH);
   CAIRO = cairo_create(CAIROSURFACE);
-  layout = setupLayout(CAIRO);
 
+  cairo_set_source_rgba(CAIRO, 0., 0., 0., 0.3);
+  cairo_paint(CAIRO);
+
+  layout = setupLayout(CAIRO);
   cairo_move_to(CAIRO, padding, padding);
   pango_cairo_layout_path(CAIRO, layout);
 
@@ -154,19 +163,7 @@ SP<CTexture> CClockOverlay::renderText(const std::string &text, CHyprColor col,
   g_object_unref(layout);
   cairo_surface_flush(CAIROSURFACE);
 
-  tex->allocate();
-  tex->m_size = {cairo_image_surface_get_width(CAIROSURFACE),
-                 cairo_image_surface_get_height(CAIROSURFACE)};
-
-  const auto DATA = cairo_image_surface_get_data(CAIROSURFACE);
-  tex->bind();
-  tex->setTexParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  tex->setTexParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  tex->setTexParameter(GL_TEXTURE_SWIZZLE_R, GL_BLUE);
-  tex->setTexParameter(GL_TEXTURE_SWIZZLE_B, GL_RED);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->m_size.x, tex->m_size.y, 0,
-               GL_RGBA, GL_UNSIGNED_BYTE, DATA);
-
+  auto tex = g_pHyprRenderer->createTexture(CAIROSURFACE);
   cairo_destroy(CAIRO);
   cairo_surface_destroy(CAIROSURFACE);
 

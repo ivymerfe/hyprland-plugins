@@ -6,24 +6,22 @@
 class CClockPassElement : public IPassElement {
  public:
   struct SRenderData {
-    SP<CTexture> texture;
+    SP<Render::ITexture> texture;
     CBox box;
   };
 
-  explicit CClockPassElement(SRenderData data_);
+  CClockPassElement(const SRenderData &data_);
+  virtual ~CClockPassElement() = default;
 
-  ~CClockPassElement() override = default;
+  virtual std::vector<UP<IPassElement>> draw() override;
+  virtual bool needsLiveBlur() override;
+  virtual bool needsPrecomputeBlur() override;
+  virtual std::optional<CBox> boundingBox() override;
 
-  void draw(const CRegion &damage) override;
+  virtual const char *passName() override { return "CClockPassElement"; }
 
-  bool needsLiveBlur() override;
+  virtual ePassElementType type() override { return EK_CUSTOM; }
 
-  bool needsPrecomputeBlur() override;
-
-  std::optional<CBox> boundingBox() override;
-
-  const char *passName() override { return "CClockPassElement"; }
-
- private:
+private:
   SRenderData m_data;
 };
