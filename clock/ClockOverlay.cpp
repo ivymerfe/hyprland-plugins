@@ -142,7 +142,7 @@ SP<Render::ITexture> CClockOverlay::renderText(const std::string &text,
   CAIROSURFACE = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, textW, textH);
   CAIRO = cairo_create(CAIROSURFACE);
 
-  cairo_set_source_rgba(CAIRO, 0., 0., 0., 0.3);
+  cairo_set_source_rgba(CAIRO, 0., 0., 0., 0.4);
   cairo_paint(CAIRO);
 
   layout = setupLayout(CAIRO);
